@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Калькулятор рецептів</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #FAF8F4;
+    --surface: #FFFFFF;
+    --border: #E8E3DA;
+    --text: #1A1714;
+    --muted: #7A7369;
+    --accent: #3D5A3E;
+    --accent-light: #EBF2EB;
+    --danger: #C0392B;
+    --danger-light: #FDECEA;
+    --radius: 10px;
+    --font-serif: 'Lora', Georgia, serif;
+    --font-sans: 'DM Sans', system-ui, sans-serif;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 2rem 1rem;
+  }
+
+  .container {
+    max-width: 640px;
+    margin: 0 auto;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 2rem;
+  }
+
+  header h1 {
+    font-family: var(--font-serif);
+    font-size: 1.7rem;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+
+  header p {
+    font-size: 0.85rem;
+    color: var(--muted);
+    font-weight: 300;
+  }
+
+  .tabs {
+    display: flex;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 4px;
+    gap: 4px;
+    margin-bottom: 1.25rem;
+  }
+
+  .tab {
+    flex: 1;
+    padding: 8px 12px;
+    font-family: var(--font-sans);
+    font-size: 0.85rem;
+    font-weight: 400;
+    color: var(--muted);
+    background: none;
+    border: none;
+    border-radius: 7px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .tab.active {
+    background: var(--accent);
+    color: #fff;
+    font-weight: 500;
+  }
+
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.25rem;
+    margin-bottom: 0.875rem;
+  }
+
+  .card-title {
+    font-size: 0.7rem;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 0.875rem;
+  }
+
+  .conv-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  input[type="number"], input[type="text"], select {
+    font-family: var(--font-sans);
+    font-size: 0.9rem;
+    color: var(--text);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    padding: 7px 10px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  input[type="number"]:focus, input[type="text"]:focus, select:focus {
+    border-color: var(--accent);
+  }
+
+  input[type="number"] { width: 90px; }
+  select { cursor: pointer; }
+
+  .arrow {
+    color: var(--muted);
+    font-size: 1.1rem;
+    flex-shrink: 0;
+  }
+
+  .result-val {
+    font-family: var(--font-serif);
+    font-size: 1.4rem;
+    font-weight: 500;
+    color: var(--accent);
+    min-width: 70px;
+  }
+
+  button {
+    font-family: var(--font-sans);
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    border-radius: 7px;
+    transition: all 0.15s;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    padding: 7px 14px;
+  }
+
+  button:hover { background: var(--bg); }
+  button:active { transform: scale(0.98); }
+
+  .btn-primary {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+  }
+
+  .btn-primary:hover { background: #2e452f; border-color: #2e452f; }
+
+  .url-row { display: flex; gap: 8px; }
+  .url-row input { flex: 1; font-size: 0.82rem; }
+
+  .hint { font-size: 0.78rem; color: var(--muted); margin-top: 7px; font-weight: 300; }
+
+  .status {
+    font-size: 0.82rem;
+    padding: 7px 10px;
+    border-radius: 7px;
+    margin-top: 8px;
+  }
+  .status.loading { background: var(--accent-light); color: var(--accent); }
+  .status.error { background: var(--danger-light); color: var(--danger); }
+
+  .recipe-name {
+    font-family: var(--font-serif);
+    font-size: 1.15rem;
+    font-weight: 500;
+    margin-bottom: 8px;
+    font-style: italic;
+  }
+
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+  .chip {
+    font-size: 0.75rem;
+    padding: 3px 10px;
+    border-radius: 20px;
+    background: var(--bg);
+    color: var(--muted);
+    border: 1px solid var(--border);
+  }
+
+  .servings-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 0.5rem;
+  }
+
+  .servings-label { font-size: 0.85rem; color: var(--muted); font-weight: 300; }
+
+  .stepper {
+    display: flex;
+    align-items: center;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    overflow: hidden;
+    background: var(--surface);
+  }
+
+  .stepper button {
+    width: 30px;
+    height: 30px;
+    border: none;
+    border-radius: 0;
+    background: none;
+    font-size: 1.1rem;
+    color: var(--text);
+    padding: 0;
+  }
+
+  .stepper button:hover { background: var(--bg); }
+  .stepper span {
+    padding: 0 10px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    min-width: 32px;
+    text-align: center;
+    border-left: 1px solid var(--border);
+    border-right: 1px solid var(--border);
+    line-height: 30px;
+  }
+
+  .ratio-badge {
+    font-size: 0.75rem;
+    padding: 3px 9px;
+    border-radius: 20px;
+    background: var(--accent-light);
+    color: var(--accent);
+    font-weight: 500;
+  }
+
+  .ing-header {
+    display: grid;
+    grid-template-columns: 1fr 72px 80px;
+    gap: 0 8px;
+    font-size: 0.72rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding: 0 0 7px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 2px;
+  }
+
+  .ing-row {
+    display: grid;
+    grid-template-columns: 1fr 72px 80px;
+    gap: 0 8px;
+    align-items: center;
+    padding: 7px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.88rem;
+  }
+
+  .ing-row:last-child { border-bottom: none; }
+  .ing-orig { color: var(--muted); font-size: 0.82rem; text-align: right; }
+  .ing-scaled { font-weight: 500; color: var(--accent); text-align: right; font-family: var(--font-serif); }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <h1>🍽️ Калькулятор рецептів</h1>
+    <p>Конвертер одиниць та масштабування порцій з Notion</p>
+  </header>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('converter', this)">Конвертер</button>
+    <button class="tab" onclick="switchTab('recipe', this)">Рецепт з Notion</button>
+  </div>
+
+  <div id="tab-converter" class="panel active">
+    <div class="card">
+      <div class="card-title">Маса</div>
+      <div class="conv-row">
+        <input type="number" id="mass-in" value="100" min="0" oninput="conv('mass')">
+        <select id="mass-from" onchange="conv('mass')">
+          <option value="g">г</option><option value="kg">кг</option>
+          <option value="oz">oz</option><option value="lb">lb</option>
+        </select>
+        <span class="arrow">→</span>
+        <span class="result-val" id="mass-val">–</span>
+        <select id="mass-to" onchange="conv('mass')">
+          <option value="oz">oz</option><option value="lb">lb</option>
+          <option value="g">г</option><option value="kg">кг</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Об'єм</div>
+      <div class="conv-row">
+        <input type="number" id="vol-in" value="1" min="0" oninput="conv('vol')">
+        <select id="vol-from" onchange="conv('vol')">
+          <option value="ml">мл</option><option value="l">л</option>
+          <option value="tsp">ч.л.</option><option value="tbsp">ст.л.</option>
+          <option value="cup">cup</option><option value="floz">fl oz</option>
+          <option value="pt">pint</option><option value="qt">quart</option><option value="gal">gallon</option>
+        </select>
+        <span class="arrow">→</span>
+        <span class="result-val" id="vol-val">–</span>
+        <select id="vol-to" onchange="conv('vol')">
+          <option value="cup">cup</option><option value="floz">fl oz</option>
+          <option value="tbsp">ст.л.</option><option value="tsp">ч.л.</option>
+          <option value="ml">мл</option><option value="l">л</option>
+          <option value="pt">pint</option><option value="qt">quart</option><option value="gal">gallon</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Температура</div>
+      <div class="conv-row">
+        <input type="number" id="temp-in" value="180" oninput="conv('temp')">
+        <select id="temp-from" onchange="conv('temp')">
+          <option value="C">°C</option><option value="F">°F</option><option value="gas">Газ</option>
+        </select>
+        <span class="arrow">→</span>
+        <span class="result-val" id="temp-val">–</span>
+        <select id="temp-to" onchange="conv('temp')">
+          <option value="F">°F</option><option value="C">°C</option><option value="gas">Газ</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div id="tab-recipe" class="panel">
+    <div class="card">
+      <div class="card-title">Посилання на рецепт у Notion</div>
+      <div class="url-row">
+        <input type="text" id="notion-url" placeholder="https://app.notion.com/p/...">
+        <button class="btn-primary" onclick="loadRecipe()">Завантажити</button>
+      </div>
+      <div id="status-msg" style="display:none" class="status"></div>
+      <p class="hint">Вставте посилання на будь-яку сторінку з бази 🍽️ Рецепти</p>
+    </div>
+
+    <div id="recipe-panel" style="display:none">
+      <div class="card">
+        <div id="recipe-title" class="recipe-name"></div>
+        <div id="recipe-meta" class="chips"></div>
+        <div class="card-title" style="margin-top:4px">Масштаб порцій</div>
+        <div class="servings-row">
+          <span class="servings-label">Базово:</span>
+          <div class="stepper">
+            <button onclick="changeBase(-1)">−</button>
+            <span id="base-s">1</span>
+            <button onclick="changeBase(1)">+</button>
+          </div>
+          <span class="servings-label">Хочу:</span>
+          <div class="stepper">
+            <button onclick="changeTarget(-1)">−</button>
+            <span id="target-s">1</span>
+            <button onclick="changeTarget(1)">+</button>
+          </div>
+          <span class="ratio-badge" id="ratio-b">×1</span>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Інгредієнти</div>
+        <div class="ing-header">
+          <span>Назва</span><span style="text-align:right">Оригінал</span><span style="text-align:right">Потрібно</span>
+        </div>
+        <div id="ing-list"></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+<script>
+const massTo={g:1,kg:.001,oz:.035274,lb:.0022046};
+const volMl={ml:1,l:1000,tsp:4.929,tbsp:14.787,cup:236.6,floz:29.57,pt:473.2,qt:946.4,gal:3785.4};
+const gasC=[null,121,135,149,163,177,191,204,218,230,246];
+
+function fmt(n){
+  if(isNaN(n)||n==null)return'–';
+  if(Math.abs(n)<0.001&&n!==0)return n.toExponential(2);
+  if(Math.abs(n)<0.01)return n.toFixed(4);
+  if(Math.abs(n)<1)return n.toFixed(2);
+  if(Math.abs(n)<100)return parseFloat(n.toFixed(2)).toString();
+  return parseFloat(n.toFixed(1)).toString();
+}
+
+function conv(type){
+  if(type==='mass'){
+    const v=parseFloat(document.getElementById('mass-in').value);
+    const f=document.getElementById('mass-from').value,t=document.getElementById('mass-to').value;
+    document.getElementById('mass-val').textContent=isNaN(v)?'–':fmt(v/massTo[f]*massTo[t]);
+  } else if(type==='vol'){
+    const v=parseFloat(document.getElementById('vol-in').value);
+    const f=document.getElementById('vol-from').value,t=document.getElementById('vol-to').value;
+    document.getElementById('vol-val').textContent=isNaN(v)?'–':fmt(v*volMl[f]/volMl[t]);
+  } else {
+    const v=parseFloat(document.getElementById('temp-in').value);
+    const f=document.getElementById('temp-from').value,t=document.getElementById('temp-to').value;
+    const el=document.getElementById('temp-val');
+    if(isNaN(v)){el.textContent='–';return;}
+    let c;
+    if(f==='C')c=v;
+    else if(f==='F')c=(v-32)*5/9;
+    else{const gi=Math.round(v);c=(gi>=1&&gi<=10)?gasC[gi]:NaN;}
+    if(isNaN(c)){el.textContent='–';return;}
+    if(t==='C')el.textContent=fmt(c);
+    else if(t==='F')el.textContent=fmt(c*9/5+32);
+    else{const gi=gasC.findIndex((x,i)=>i>0&&Math.abs(x-c)<8);el.textContent=gi>0?gi:'–';}
+  }
+}
+
+function switchTab(name,el){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('tab-'+name).classList.add('active');
+}
+
+let baseServings=1,targetServings=1,ingredients=[];
+function changeBase(d){baseServings=Math.max(1,baseServings+d);document.getElementById('base-s').textContent=baseServings;renderIng();}
+function changeTarget(d){targetServings=Math.max(1,targetServings+d);document.getElementById('target-s').textContent=targetServings;renderIng();}
+
+function renderIng(){
+  const ratio=targetServings/baseServings;
+  document.getElementById('ratio-b').textContent=ratio===1?'×1':'×'+fmt(ratio);
+  document.getElementById('ing-list').innerHTML=ingredients.map(ing=>{
+    const scaled=ing.numericAmt*ratio;
+    return`<div class="ing-row">
+      <span>${ing.name}</span>
+      <span class="ing-orig">${ing.origAmt}</span>
+      <span class="ing-scaled">${isNaN(scaled)?'–':fmt(scaled)} <span style="font-family:var(--font-sans);font-size:0.78rem;color:var(--muted);font-weight:300">${ing.unit}</span></span>
+    </div>`;
+  }).join('');
+}
+
+function setStatus(msg,type){
+  const el=document.getElementById('status-msg');
+  el.style.display='block';el.className='status '+type;el.textContent=msg;
+}
+function hideStatus(){document.getElementById('status-msg').style.display='none';}
+
+function parseAmount(str){
+  if(!str)return NaN;
+  str=str.trim().replace(',','.');
+  const vf={'½':0.5,'⅓':0.333,'⅔':0.667,'¼':0.25,'¾':0.75,'⅛':0.125};
+  for(const[ch,val]of Object.entries(vf))str=str.replace(ch,''+val);
+  const m=str.match(/[\d.]+/);
+  return m?parseFloat(m[0]):NaN;
+}
+function parseUnit(str){
+  if(!str)return'';
+  const us=['кг','мл','г','л','ч.л.','ст.л.','cup','fl oz','oz','lb','шт','пучок'];
+  for(const u of us)if(str.includes(u))return u;
+  return str.trim().split(/\s+/).pop()||'';
+}
+
+async function loadRecipe(){
+  const url=document.getElementById('notion-url').value.trim();
+  if(!url){setStatus('Вставте посилання на Notion-сторінку рецепту','error');return;}
+  setStatus('Завантажую рецепт з Notion…','loading');
+  document.getElementById('recipe-panel').style.display='none';
+  try{
+    const res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:1000,
+        system:`Ти помічник для парсингу рецептів з Notion. Поверни ТІЛЬКИ JSON без пояснень і без markdown:
+{"title":"назва","servings":число або null,"time":"час або null","categories":[],"rating":"або null","ingredients":[{"name":"назва","amount":"60 г","unit":"г"}]}
+Якщо порцій не вказано — servings:1. Парси таблицю інгредієнтів зі сторінки.`,
+        messages:[{role:'user',content:`URL: ${url}\nЗавантаж цю Notion-сторінку і поверни JSON.`}],
+        mcp_servers:[{type:'url',url:'https://mcp.notion.com/mcp',name:'notion'}]
+      })
+    });
+    const data=await res.json();
+    const text=data.content.filter(b=>b.type==='text').map(b=>b.text).join('');
+    let json;
+    try{json=JSON.parse(text.replace(/```json|```/g,'').trim());}
+    catch{setStatus('Не вдалося розпізнати відповідь. Перевірте посилання.','error');return;}
+    document.getElementById('recipe-title').textContent=json.title||'Рецепт';
+    const meta=document.getElementById('recipe-meta');
+    meta.innerHTML='';
+    if(json.time)meta.innerHTML+=`<span class="chip">⏱ ${json.time}</span>`;
+    if(json.rating)meta.innerHTML+=`<span class="chip">${json.rating}</span>`;
+    (json.categories||[]).forEach(c=>meta.innerHTML+=`<span class="chip">${c}</span>`);
+    baseServings=json.servings||1;targetServings=json.servings||1;
+    document.getElementById('base-s').textContent=baseServings;
+    document.getElementById('target-s').textContent=targetServings;
+    ingredients=(json.ingredients||[]).map(ing=>({
+      name:ing.name,origAmt:ing.amount,
+      numericAmt:parseAmount(ing.amount),
+      unit:parseUnit(ing.amount)||ing.unit||''
+    }));
+    renderIng();
+    document.getElementById('recipe-panel').style.display='block';
+    hideStatus();
+  }catch(err){setStatus('Помилка: '+err.message,'error');}
+}
+
+conv('mass');conv('vol');conv('temp');
+</script>
+</body>
+</html>
