@@ -1,0 +1,1108 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Фінансовий трекер</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0c0e11; --card:#15181d; --card2:#1b1f26; --border:#262b33;
+  --text:#e8eaee; --muted:#8b93a1; --accent:#5b5bd6; --accent2:#6e6ee8;
+  --green:#4ade80; --red:#f87171; --yellow:#f5a623; --blue:#38bdf8;
+  --radius:14px;
+}
+html{font-size:15px}
+body{font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
+input,select{font:inherit;color:var(--text);background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:.55rem .7rem;width:100%;outline:none}
+input:focus,select:focus{border-color:var(--accent)}
+input[type=date]{color-scheme:dark}
+a{color:var(--blue)}
+
+/* ---------- layout ---------- */
+.topbar{display:flex;align-items:center;gap:.6rem;padding:.7rem 1rem;position:sticky;top:0;background:rgba(12,14,17,.92);backdrop-filter:blur(8px);z-index:50;border-bottom:1px solid var(--border)}
+.logo{width:34px;height:34px;border-radius:9px;background:var(--card2);display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--accent2)}
+.topbar .title{font-weight:600;margin-right:auto}
+.btn{background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:.5rem .9rem;display:inline-flex;align-items:center;gap:.4rem;white-space:nowrap}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent)}
+.btn.primary:hover{background:var(--accent2)}
+.btn.small{padding:.3rem .6rem;font-size:.85rem;border-radius:9px}
+.btn.danger{color:var(--red)}
+.currency-chip{display:inline-flex;align-items:center;gap:.45rem;background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:.5rem .8rem;font-weight:600}
+.flag{width:22px;height:15px;border-radius:3px;background:linear-gradient(to bottom,#3b82f6 50%,#facc15 50%)}
+
+nav.tabsbar{display:flex;gap:.2rem;padding:.45rem .8rem;overflow-x:auto;border-bottom:1px solid var(--border);scrollbar-width:none}
+nav.tabsbar::-webkit-scrollbar{display:none}
+nav.tabsbar button{padding:.5rem .85rem;border-radius:10px;color:var(--muted);font-weight:600;white-space:nowrap}
+nav.tabsbar button.active{color:var(--text);background:var(--card2)}
+
+main{max-width:880px;margin:0 auto;padding:1rem 1rem 4rem}
+.page{display:none}
+.page.active{display:block}
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:1.1rem;margin-bottom:1rem}
+.card h3{font-size:.95rem;color:var(--muted);font-weight:600;margin-bottom:.5rem}
+.big{font-size:2rem;font-weight:700}
+.row{display:flex;gap:1.4rem;flex-wrap:wrap;align-items:flex-end}
+.kv .k{color:var(--muted);font-size:.85rem;margin-bottom:.15rem}
+.kv .v{font-weight:600}
+.pos{color:var(--green)} .neg{color:var(--red)}
+.muted{color:var(--muted)}
+.section-title{font-size:1.25rem;font-weight:700;margin:1.4rem 0 .8rem}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:.8rem}
+@media(max-width:560px){.grid2{grid-template-columns:1fr}}
+.legend{display:flex;gap:1.2rem;flex-wrap:wrap;margin-top:.8rem}
+.legend .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:.35rem}
+.bar-track{height:7px;border-radius:4px;background:var(--card2);overflow:hidden;display:flex;margin-top:.9rem}
+.bar-track i{display:block;height:100%}
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--muted);padding:2.5rem 1rem;gap:.8rem;text-align:center}
+.empty svg{opacity:.45}
+
+/* tables */
+.tablewrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:.92rem}
+th{color:var(--muted);font-weight:600;text-align:left;padding:.6rem .6rem;background:var(--card2);white-space:nowrap}
+td{padding:.65rem .6rem;border-top:1px solid var(--border);white-space:nowrap}
+table.dense td{padding:.35rem .6rem}
+tr:hover td{background:rgba(255,255,255,.02)}
+.pill{display:inline-block;padding:.15rem .55rem;border-radius:999px;font-size:.78rem;font-weight:600}
+.pill.buy{background:rgba(74,222,128,.13);color:var(--green)}
+.pill.sell{background:rgba(248,113,113,.13);color:var(--red)}
+.pill.dividend{background:rgba(56,189,248,.13);color:var(--blue)}
+.pill.income{background:rgba(91,91,214,.18);color:#a5a5f5}
+.pill.expense{background:rgba(245,166,35,.15);color:var(--yellow)}
+.pill.transfer{background:rgba(139,147,161,.15);color:var(--muted)}
+
+/* filter fields with floating label */
+.field{position:relative;margin-bottom:.7rem}
+.field label{position:absolute;top:-7px;left:12px;background:var(--card);padding:0 5px;font-size:.72rem;color:var(--muted)}
+
+/* modal */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:flex-end;justify-content:center;z-index:100}
+.overlay.open{display:flex}
+.modal{background:var(--card);border:1px solid var(--border);border-radius:18px 18px 0 0;width:100%;max-width:560px;max-height:88vh;overflow-y:auto;padding:1.2rem}
+@media(min-width:600px){.overlay{align-items:center}.modal{border-radius:18px}}
+.modal h2{font-size:1.1rem;margin-bottom:1rem}
+.modal .form-row{margin-bottom:.7rem}
+.modal .form-row label{display:block;font-size:.82rem;color:var(--muted);margin-bottom:.25rem}
+.typegrid{display:grid;grid-template-columns:repeat(3,1fr);gap:.6rem}
+.typegrid button{background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:1rem .4rem;display:flex;flex-direction:column;align-items:center;gap:.4rem;font-size:.85rem}
+.typegrid button:hover{border-color:var(--accent)}
+.typegrid .ic{font-size:1.3rem}
+
+.toast{position:fixed;bottom:1.2rem;left:50%;transform:translateX(-50%);background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:.7rem 1.1rem;z-index:200;opacity:0;transition:opacity .25s;pointer-events:none;max-width:90vw}
+.toast.show{opacity:1}
+
+/* planner */
+.planner-row{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.45rem 0}
+.planner-row .lbl{color:#c6cbd4;font-size:.95rem}
+.planner-row input,.planner-row select{max-width:170px;text-align:left;font-weight:600}
+.seg{display:flex;background:var(--card2);border:1px solid var(--border);border-radius:11px;padding:3px;gap:3px}
+.seg button{flex:1;padding:.45rem .6rem;border-radius:8px;color:var(--muted);font-weight:600;font-size:.88rem}
+.seg button.active{background:#2a2f38;color:var(--text)}
+.switch{position:relative;width:44px;height:25px;background:var(--card2);border:1px solid var(--border);border-radius:999px;transition:.2s;flex:none}
+.switch::after{content:'';position:absolute;top:2px;left:2px;width:19px;height:19px;border-radius:50%;background:var(--muted);transition:.2s}
+.switch.on{background:var(--accent);border-color:var(--accent)}
+.switch.on::after{left:21px;background:#fff}
+.plan-circles{display:grid;grid-template-columns:repeat(3,1fr);gap:.6rem}
+.plan-circles .pc{background:var(--card2);border:1px solid var(--border);border-radius:14px;padding:1rem .5rem;display:flex;flex-direction:column;align-items:center;gap:.5rem}
+.plan-circles .pc.sel{border-color:var(--accent)}
+.plan-circles .icball{width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.2rem}
+.holding-actions button{margin-right:.4rem}
+.pager{display:flex;align-items:center;gap:1rem;justify-content:flex-end;padding:.8rem .4rem;color:var(--muted);font-size:.9rem;flex-wrap:wrap}
+.pager button{font-size:1.1rem;padding:0 .4rem}
+.pager button:disabled{opacity:.3}
+.list-item{display:flex;justify-content:space-between;align-items:center;padding:.6rem 0;border-bottom:1px solid var(--border);gap:.6rem}
+.list-item:last-child{border-bottom:none}
+.chart-note{font-size:.78rem;color:var(--muted);margin-top:.4rem}
+svg text{font-family:inherit}
+/* planner extras */
+.money{display:flex;gap:.4rem;max-width:230px;width:100%;justify-content:flex-end}
+.money input{text-align:right}
+.money select{max-width:62px;width:auto;padding:.55rem .35rem;text-align:center;font-weight:600}
+.pl-mode{margin:.3rem 0 .9rem}
+.chart-icons{display:flex;gap:.35rem;justify-content:flex-end;margin-bottom:.7rem}
+.chart-icons button{width:40px;height:34px;border:1px solid var(--border);border-radius:9px;background:var(--card2);color:var(--muted);display:flex;align-items:center;justify-content:center;font-size:1.05rem}
+.chart-icons button.active{background:#2a2f38;color:var(--text);border-color:var(--accent)}
+.chart-wrap{position:relative}
+.chart-tip{position:absolute;pointer-events:none;background:#0f1216;border:1px solid var(--border);border-radius:10px;padding:.45rem .7rem;font-size:.82rem;opacity:0;transform:translate(-50%,-115%);transition:opacity .08s;white-space:nowrap;z-index:5;box-shadow:0 6px 18px rgba(0,0,0,.4)}
+.chart-tip .tt-row{display:flex;align-items:center;gap:.4rem;margin-top:.15rem}
+.chart-tip .dot{width:9px;height:9px;border-radius:50%;display:inline-block}
+.chart-legend{display:flex;gap:1.3rem;justify-content:center;flex-wrap:wrap;margin-top:.8rem;font-size:.85rem;color:var(--muted)}
+.chart-legend .dot{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:.35rem}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="logo">₴</div>
+  <div class="title">Фінтрекер</div>
+  <button class="btn primary" id="btnAdd">⊕ Додати</button>
+  <div class="currency-chip"><span class="flag"></span>USD</div>
+  <button class="btn" id="btnSettings" title="Налаштування">⚙</button>
+</header>
+
+<nav class="tabsbar" id="tabsbar">
+  <button data-page="dashboard" class="active">Дашборд</button>
+  <button data-page="portfolio">Портфелі</button>
+  <button data-page="deals">Угоди</button>
+  <button data-page="budget">Бюджет</button>
+  <button data-page="planner">Планер</button>
+  <button data-page="settings">Налаштування</button>
+</nav>
+
+<main>
+
+<!-- ================= DASHBOARD ================= -->
+<section class="page active" id="page-dashboard">
+  <div class="card">
+    <h3>Всі портфелі</h3>
+    <div class="big" id="dTotal">$0</div>
+    <div class="row" style="margin-top:.7rem">
+      <div class="kv"><div class="k">За день</div><div class="v" id="dDay">↑ +$0 +0%</div></div>
+      <div class="kv"><div class="k">Всього</div><div class="v" id="dAll">↑ +$0 +0%</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Пасивний дохід</h3>
+    <div><span class="big" id="dPassive">$0</span> <span class="muted">/рік</span></div>
+    <div class="row" style="margin-top:.7rem">
+      <div class="kv"><div class="k">на міс.</div><div class="v" id="dPassiveM">$0</div></div>
+      <div class="kv"><div class="k">Дивідендна дохідність %</div><div class="v pos" id="dYield">0%</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start">
+      <h3>Готівка</h3>
+      <button class="btn small" onclick="go('budget')">✎</button>
+    </div>
+    <div class="big" id="dCash">$0</div>
+    <div class="row" style="margin-top:.7rem">
+      <div class="kv"><div class="k">Подушка безпеки</div><div class="v" id="dCushion">–</div></div>
+      <div class="kv"><div class="k">Дельта</div><div class="v" id="dDelta">–</div></div>
+    </div>
+    <div class="bar-track" id="dBar"></div>
+    <div class="legend">
+      <span><i class="dot" style="background:var(--accent)"></i>Доходи<br><b id="dInc">$0</b></span>
+      <span><i class="dot" style="background:var(--blue)"></i>Інвестиції<br><b id="dInv">$0</b></span>
+      <span><i class="dot" style="background:var(--yellow)"></i>Витрати<br><b id="dExp">$0</b></span>
+    </div>
+  </div>
+
+  <div class="section-title">Капітал на місяць</div>
+  <div class="card" id="dCapitalChart"></div>
+</section>
+
+<!-- ================= PORTFOLIO ================= -->
+<section class="page" id="page-portfolio">
+  <div style="display:flex;gap:.6rem;align-items:center;margin-bottom:1rem;flex-wrap:wrap">
+    <select id="pfSelect" style="max-width:240px"></select>
+    <button class="btn" id="btnNewPf">⊕ Новий портфель</button>
+    <button class="btn" id="btnRefresh">⟳ Оновити ціни</button>
+  </div>
+
+  <div class="card">
+    <div style="display:flex;justify-content:space-between">
+      <div><h3>Поточна вартість</h3><div class="big" id="pfValue">$0</div></div>
+      <div style="text-align:right"><h3>Зміна</h3><div class="v" id="pfChange">↑ $0</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Вартість портфеля</h3>
+    <div id="pfChart"></div>
+  </div>
+
+  <div class="section-title">Активи</div>
+  <div class="card tablewrap" style="padding:.4rem" id="pfHoldings"></div>
+</section>
+
+<!-- ================= DEALS ================= -->
+<section class="page" id="page-deals">
+  <nav class="tabsbar" style="border-bottom:none;padding-left:0" id="dealTabs">
+    <button data-dt="trades" class="active">Угоди</button>
+    <button data-dt="income">Доходи</button>
+    <button data-dt="expense">Витрати</button>
+    <button data-dt="transfer">Перекази &amp; Платежі</button>
+  </nav>
+
+  <div class="card">
+    <div class="field"><label>Портфель</label><select id="fPf"></select></div>
+    <div class="field"><label>Тикер</label><input id="fTicker" placeholder="Тикер"></div>
+    <div class="field"><label>Початкова дата</label><input type="date" id="fFrom"></div>
+    <div class="field"><label>Кінцева дата</label><input type="date" id="fTo"></div>
+  </div>
+
+  <div class="card tablewrap" style="padding:0">
+    <div id="dealsTable"></div>
+    <div class="pager">
+      <span>Рядків на сторінці:
+        <select id="pageSize" style="width:auto;display:inline-block;padding:.2rem .4rem">
+          <option>10</option><option selected>25</option><option>50</option>
+        </select>
+      </span>
+      <span id="pageInfo">0–0 з 0</span>
+      <button id="pgPrev">‹</button><button id="pgNext">›</button>
+    </div>
+    <div style="display:flex;align-items:center;gap:.6rem;padding:.6rem 1rem 1rem">
+      <div class="switch on" id="denseSwitch"></div><span>Dense</span>
+    </div>
+  </div>
+</section>
+
+<!-- ================= BUDGET ================= -->
+<section class="page" id="page-budget">
+  <h3 class="muted" style="font-weight:600">Загальний баланс</h3>
+  <div class="big" id="bTotal" style="margin-bottom:1rem">$0.00</div>
+
+  <div class="section-title" style="margin-top:0">Рахунки</div>
+  <div class="grid2" id="bAccounts"></div>
+  <button class="btn" id="btnNewAcc" style="margin:.4rem 0 1rem">⊕ Створити новий рахунок</button>
+
+  <div class="section-title">Статистика балансу</div>
+  <div class="card">
+    <div class="legend" style="margin:0 0 .8rem">
+      <span><i class="dot" style="background:var(--accent)"></i>Доходи</span>
+      <span><i class="dot" style="background:var(--yellow)"></i>Витрати</span>
+      <span><i class="dot" style="background:var(--blue)"></i>Інвестиції</span>
+    </div>
+    <div id="bStatsChart"></div>
+  </div>
+
+  <div class="section-title">Планування <span class="muted" id="planYear"></span></div>
+  <div class="card">
+    <div class="plan-circles" id="planCircles"></div>
+    <div id="planList" style="margin-top:1rem"></div>
+    <div style="text-align:center;margin-top:1rem">
+      <button class="btn primary" id="btnNewPlan">Створити план</button>
+    </div>
+  </div>
+
+  <div class="section-title">Доходи та витрати <span class="muted" id="bMonthLbl"></span></div>
+  <div class="card" id="bPie"></div>
+
+  <div class="card" style="display:flex;justify-content:space-between;align-items:center;cursor:pointer" onclick="go('deals')">
+    <b>Транзакції</b><span class="muted">Усі ›</span>
+  </div>
+</section>
+
+<!-- ================= PLANNER ================= -->
+<section class="page" id="page-planner">
+  <div class="section-title" style="margin-top:.2rem">Планер</div>
+  <div class="card">
+    <div class="planner-row"><span class="lbl">Горизонт планування</span><input id="plYears" value="25" inputmode="numeric"></div>
+    <div class="planner-row"><span class="lbl">Валюта результатів</span>
+      <select id="plBaseCur" style="max-width:110px;font-weight:600"></select></div>
+    <div class="planner-row" style="align-items:center">
+      <span class="lbl muted" style="font-size:.85rem">Курс за 1&nbsp;$</span>
+      <div style="display:flex;gap:.5rem;max-width:230px;width:100%">
+        <div class="money" style="max-width:none;flex:1"><input id="fxEUR" inputmode="decimal"><span style="align-self:center;color:var(--muted)">€</span></div>
+        <div class="money" style="max-width:none;flex:1"><input id="fxUAH" inputmode="decimal"><span style="align-self:center;color:var(--muted)">₴</span></div>
+      </div>
+    </div>
+    <div class="planner-row"><span class="lbl">Стартовий капітал</span>
+      <div class="money"><input id="plStart" value="1000" inputmode="decimal"><select class="curSel"></select></div>
+    </div>
+    <div class="planner-row"><span class="lbl">Регулярне поповнення</span>
+      <div class="money"><input id="plContrib" value="350" inputmode="decimal"><select class="curSel"></select></div>
+    </div>
+    <div class="planner-row"><span class="lbl">Частота поповнень</span>
+      <select id="plFreq"><option value="12">Щомісячно</option><option value="4">Щоквартально</option><option value="1">Щорічно</option></select>
+    </div>
+    <hr style="border-color:var(--border);margin:.7rem 0">
+
+    <div class="seg pl-mode" id="plModeSeg">
+      <button data-pm="template">Шаблон портфеля</button>
+      <button data-pm="manual" class="active">Дохідність вручну</button>
+    </div>
+
+    <div id="plTemplateBlock" style="display:none">
+      <div class="planner-row"><span class="lbl">Ризик-профіль</span>
+        <select id="plRiskProfile" style="max-width:200px;font-weight:600">
+          <option value="5">Консервативний</option>
+          <option value="7" selected>Помірний</option>
+          <option value="9">Агресивний</option>
+        </select>
+      </div>
+    </div>
+    <div id="plManualBlock">
+      <div class="planner-row"><span class="lbl">Очікувана дохідність</span><input id="plReturn" value="9" inputmode="decimal"></div>
+      <div class="muted" id="plProfile" style="padding:.2rem 0 .5rem">Припущений ризик-профіль: Агресивний</div>
+    </div>
+
+    <div class="planner-row"><span class="lbl">Рівень інфляції</span><input id="plInfl" value="3" inputmode="decimal"></div>
+    <div class="planner-row"><span class="lbl">Зростання поповнень</span><input id="plGrowth" value="3" inputmode="decimal"></div>
+    <hr style="border-color:var(--border);margin:.7rem 0">
+    <div class="planner-row"><span class="lbl">Податкова ставка</span><input id="plTax" value="18" inputmode="decimal"></div>
+    <div class="planner-row" style="justify-content:flex-start">
+      <div class="switch" id="plPension"></div><span class="lbl">Розрахувати пенсію</span>
+    </div>
+
+    <div id="plPensionBlock" style="display:none">
+      <div class="planner-row"><span class="lbl">Років пенсії</span><input id="plRetYears" value="30" inputmode="numeric"></div>
+      <div class="planner-row"><span class="lbl">Періодичні витрати (на міс.)</span>
+        <div class="money"><input id="plRetSpend" value="1000" inputmode="decimal"><select class="curSel"></select></div>
+      </div>
+      <div class="planner-row"><span class="lbl">Дохідність портфеля</span><input id="plRetReturn" value="7" inputmode="decimal"></div>
+    </div>
+
+    <button class="btn primary" style="width:100%;justify-content:center;margin-top:.6rem" id="btnCalc">Порахувати</button>
+  </div>
+
+  <div id="plResults" style="display:none">
+    <div class="card">
+      <div class="section-title" style="margin:0 0 .7rem">Ризики</div>
+      <div class="planner-row"><span class="lbl">Портфельний ризик</span><b id="plRisk"></b></div>
+      <div class="planner-row"><span class="lbl">Максимальна просадка портфеля</span><b class="neg" id="plDD"></b></div>
+    </div>
+    <div class="card">
+      <div class="big" id="plFinal"></div>
+      <div class="muted" id="plFinalLbl" style="margin:.3rem 0 .8rem"></div>
+      <div class="planner-row"><span class="lbl">Очікувана дохідність</span><b id="plRetOut"></b></div>
+      <div class="planner-row"><span class="lbl">Внесено всього</span><b id="plInvested"></b></div>
+      <div class="planner-row"><span class="lbl">Прибуток після податку</span><b class="pos" id="plAfterTax"></b></div>
+      <div class="planner-row" id="plPensionRow" style="display:none"><span class="lbl" id="plPensionLbl">Щомісячна виплата на пенсії</span><b class="pos" id="plPensionOut"></b></div>
+    </div>
+    <div class="card">
+      <div class="section-title" id="plChartTitle" style="margin:0 0 .6rem">Прогнозоване зростання капіталу</div>
+      <div class="chart-icons" id="plChartIcons"></div>
+      <div id="plChart"></div>
+      <div class="seg" style="max-width:360px;margin:1rem auto 0">
+        <button class="active" data-mode="nominal">Номінальна вартість</button>
+        <button data-mode="real">Реальна вартість</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= SETTINGS ================= -->
+<section class="page" id="page-settings">
+  <div class="section-title" style="margin-top:.2rem">Налаштування</div>
+  <div class="card">
+    <h3>Котирування ринку (необов'язково)</h3>
+    <p class="muted" style="font-size:.88rem;margin-bottom:.7rem">
+      Без ключа ціни активів вводяться вручну. Щоб оновлювати ціни автоматично, отримайте безкоштовний
+      API-ключ на <a href="https://finnhub.io" target="_blank" rel="noopener">finnhub.io</a> та вставте його сюди.
+      Ключ зберігається лише у вашому браузері.
+    </p>
+    <div class="form-row" style="margin-bottom:.7rem">
+      <input id="setApiKey" placeholder="Finnhub API-ключ" autocomplete="off">
+    </div>
+    <button class="btn primary" id="btnSaveKey">Зберегти ключ</button>
+  </div>
+  <div class="card">
+    <h3>Подушка безпеки</h3>
+    <p class="muted" style="font-size:.88rem;margin-bottom:.7rem">Кількість місяців середніх витрат для розрахунку подушки.</p>
+    <input id="setCushion" type="number" min="1" max="36" style="max-width:140px">
+  </div>
+  <div class="card">
+    <h3>Дані</h3>
+    <div style="display:flex;gap:.6rem;flex-wrap:wrap">
+      <button class="btn" id="btnExport">⤓ Експорт JSON</button>
+      <button class="btn" id="btnImport">⤒ Імпорт JSON</button>
+      <button class="btn danger" id="btnWipe">Видалити всі дані</button>
+    </div>
+    <input type="file" id="importFile" accept=".json" style="display:none">
+    <p class="muted" style="font-size:.82rem;margin-top:.7rem">Усі дані зберігаються локально у цьому браузері (localStorage). Жодних серверів.</p>
+  </div>
+</section>
+
+</main>
+
+<!-- modal -->
+<div class="overlay" id="overlay"><div class="modal" id="modal"></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+'use strict';
+/* ============================== state ============================== */
+const LS_KEY='fintracker_v1';
+const today=()=>new Date().toISOString().slice(0,10);
+const ym=d=>d.slice(0,7);
+const uid=()=>Math.random().toString(36).slice(2,10);
+const MONTHS=['Січень','Лютий','Березень','Квітень','Травень','Червень','Липень','Серпень','Вересень','Жовтень','Листопад','Грудень'];
+const MONTHS_S=['Січ','Лют','Бер','Кві','Тра','Чер','Лип','Сер','Вер','Жов','Лис','Гру'];
+
+let S=load();
+function defaults(){return{
+  settings:{apiKey:'',cushionMonths:6,planBase:'$',fx:{EUR:0.92,UAH:41}},
+  portfolios:[],            // {id,name}
+  trades:[],                // {id,portfolioId,type:buy|sell|dividend,ticker,date,qty,price,fee,amount}
+  prices:{},                // TICKER:{price,prevClose,updatedAt}
+  meta:{},                  // TICKER:{divPS}
+  accounts:[],              // {id,name,balance}
+  txs:[],                   // {id,type:income|expense|transfer,accountId,toAccountId,category,amount,date,note}
+  plans:[],                 // {id,year,kind:income|expense|invest,category,amount}
+  snapshots:{}              // 'YYYY-MM': netWorth
+};}
+function lsSet(v){try{localStorage.setItem(LS_KEY,v);}catch(e){}}
+function load(){try{const raw=localStorage.getItem(LS_KEY);if(raw){const s=Object.assign(defaults(),JSON.parse(raw));s.settings=Object.assign(defaults().settings,s.settings||{});s.settings.fx=Object.assign({EUR:0.92,UAH:41},s.settings.fx||{});return s;}}catch(e){}return defaults();}
+function save(){lsSet(JSON.stringify(S));snapshot();}
+
+/* ============================== utils ============================== */
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+function fmt(n,dec){if(n==null||isNaN(n))n=0;const neg=n<0;const v=Math.abs(n).toLocaleString('en-US',{minimumFractionDigits:dec??(Math.abs(n)>=1000?0:2),maximumFractionDigits:dec??2});return(neg?'-$':'$')+v;}
+function pct(n){return(n>=0?'+':'')+(n*100).toFixed(2)+'%';}
+function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('show');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('show'),2800);}
+function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function num(v){const n=parseFloat(String(v).replace(/[\s,$%]/g,''));return isNaN(n)?0:n;}
+
+const EMPTY=`<div class="empty">
+<svg width="90" height="70" viewBox="0 0 90 70" fill="none"><rect x="15" y="10" width="60" height="45" rx="6" fill="#2a2f38"/><circle cx="24" cy="18" r="2" fill="#454c58"/><circle cx="31" cy="18" r="2" fill="#454c58"/><rect x="22" y="26" width="22" height="4" rx="2" fill="#454c58"/><rect x="22" y="34" width="16" height="4" rx="2" fill="#454c58"/><rect x="50" y="26" width="18" height="20" rx="3" fill="#454c58"/></svg>
+<div>Немає даних</div></div>`;
+
+/* ============================== navigation ============================== */
+function go(page){
+  $$('#tabsbar button').forEach(b=>b.classList.toggle('active',b.dataset.page===page));
+  $$('.page').forEach(p=>p.classList.toggle('active',p.id==='page-'+page));
+  render();
+  window.scrollTo(0,0);
+}
+$('#tabsbar').addEventListener('click',e=>{const b=e.target.closest('button');if(b)go(b.dataset.page);});
+$('#btnSettings').onclick=()=>go('settings');
+
+/* ============================== holdings math ============================== */
+function holdings(pid){ // pid '' = all portfolios
+  const map={};
+  S.trades.filter(t=>!pid||t.portfolioId===pid).sort((a,b)=>a.date<b.date?-1:1).forEach(t=>{
+    if(t.type==='dividend')return;
+    const h=map[t.ticker]||(map[t.ticker]={ticker:t.ticker,qty:0,cost:0});
+    if(t.type==='buy'){h.qty+=t.qty;h.cost+=t.qty*t.price+(t.fee||0);}
+    else if(t.type==='sell'&&h.qty>0){const avg=h.cost/h.qty;h.qty-=t.qty;h.cost=Math.max(0,h.qty*avg);}
+  });
+  return Object.values(map).filter(h=>h.qty>1e-9);
+}
+function priceOf(t){return(S.prices[t]&&S.prices[t].price)||0;}
+function prevCloseOf(t){const p=S.prices[t];return(p&&p.prevClose)||priceOf(t);}
+function portfolioValue(pid){return holdings(pid).reduce((s,h)=>s+h.qty*priceOf(h.ticker),0);}
+function portfolioCost(pid){return holdings(pid).reduce((s,h)=>s+h.cost,0);}
+function dayChange(pid){return holdings(pid).reduce((s,h)=>s+h.qty*(priceOf(h.ticker)-prevCloseOf(h.ticker)),0);}
+function passiveIncome(){return holdings('').reduce((s,h)=>s+h.qty*((S.meta[h.ticker]&&S.meta[h.ticker].divPS)||0),0);}
+function cashTotal(){return S.accounts.reduce((s,a)=>s+accountBalance(a.id),0);}
+function accountBalance(id){
+  const acc=S.accounts.find(a=>a.id===id);if(!acc)return 0;
+  let b=acc.balance||0;
+  S.txs.forEach(t=>{
+    if(t.type==='income'&&t.accountId===id)b+=t.amount;
+    if(t.type==='expense'&&t.accountId===id)b-=t.amount;
+    if(t.type==='transfer'){if(t.accountId===id)b-=t.amount;if(t.toAccountId===id)b+=t.amount;}
+  });
+  return b;
+}
+function monthSums(yyyymm){
+  let inc=0,exp=0,inv=0;
+  S.txs.forEach(t=>{if(ym(t.date)!==yyyymm)return;if(t.type==='income')inc+=t.amount;if(t.type==='expense')exp+=t.amount;});
+  S.trades.forEach(t=>{if(ym(t.date)!==yyyymm)return;if(t.type==='buy')inv+=t.qty*t.price+(t.fee||0);if(t.type==='sell')inv-=t.qty*t.price;});
+  return{inc,exp,inv};
+}
+function avgMonthlyExpense(){
+  const map={};S.txs.filter(t=>t.type==='expense').forEach(t=>{map[ym(t.date)]=(map[ym(t.date)]||0)+t.amount;});
+  const v=Object.values(map);return v.length?v.reduce((a,b)=>a+b,0)/v.length:0;
+}
+function netWorth(){return cashTotal()+portfolioValue('');}
+function snapshot(){S.snapshots[ym(today())]=Math.round(netWorth()*100)/100;lsSet(JSON.stringify(S));}
+
+/* ============================== SVG charts ============================== */
+function areaChart(points,labels,{height=240,color='#5b5bd6'}={}){
+  if(!points.length||points.every(p=>p===0))return EMPTY;
+  const W=800,H=height,padL=10,padB=22,padT=10;
+  const max=Math.max(...points)*1.08||1,min=Math.min(0,...points);
+  const x=i=>padL+i*(W-2*padL)/Math.max(points.length-1,1);
+  const y=v=>padT+(H-padT-padB)*(1-(v-min)/(max-min||1));
+  let d='M'+x(0)+','+y(points[0]);
+  points.forEach((p,i)=>{if(i)d+=' L'+x(i)+','+y(p);});
+  const area=d+` L${x(points.length-1)},${H-padB} L${x(0)},${H-padB} Z`;
+  const grid=[0.25,0.5,0.75,1].map(f=>`<line x1="${padL}" x2="${W-padL}" y1="${y(min+(max-min)*f)}" y2="${y(min+(max-min)*f)}" stroke="#262b33" stroke-width="1"/>`).join('');
+  const lbls=labels.map((l,i)=>!l?'':`<text x="${x(i)}" y="${H-4}" fill="#8b93a1" font-size="12" text-anchor="middle">${esc(l)}</text>`).join('');
+  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;display:block">
+    ${grid}
+    <path d="${area}" fill="${color}" opacity="0.85"/>
+    <path d="${d}" stroke="${color}" stroke-width="2.5" fill="none"/>
+    ${lbls}</svg>`;
+}
+function groupedBars(cats,series,colors,{height=230}={}){
+  const flat=series.flat();
+  if(!flat.length||flat.every(v=>!v))return EMPTY;
+  const W=800,H=height,padB=24,padT=8;
+  const max=Math.max(...flat,1)*1.1;
+  const groupW=(W-20)/cats.length,n=series.length,barW=Math.min(26,groupW/(n+1));
+  let bars='';
+  cats.forEach((c,ci)=>{
+    series.forEach((s,si)=>{
+      const v=s[ci]||0,h=(H-padT-padB)*v/max;
+      const bx=10+ci*groupW+groupW/2-(n*barW)/2+si*barW;
+      bars+=`<rect x="${bx}" y="${H-padB-h}" width="${barW-3}" height="${h}" rx="3" fill="${colors[si]}"/>`;
+    });
+    bars+=`<text x="${10+ci*groupW+groupW/2}" y="${H-6}" fill="#8b93a1" font-size="12" text-anchor="middle">${esc(c)}</text>`;
+  });
+  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;display:block">${bars}</svg>`;
+}
+function donut(items){ // [{label,value,color}]
+  const total=items.reduce((s,i)=>s+i.value,0);
+  if(!total)return EMPTY;
+  const R=70,C=2*Math.PI*R;let off=0,segs='';
+  items.forEach(it=>{
+    const frac=it.value/total;
+    segs+=`<circle r="${R}" cx="90" cy="90" fill="none" stroke="${it.color}" stroke-width="26"
+      stroke-dasharray="${frac*C} ${C}" stroke-dashoffset="${-off*C}" transform="rotate(-90 90 90)"/>`;
+    off+=frac;
+  });
+  const legend=items.map(it=>`<div class="list-item"><span><i class="dot" style="background:${it.color};display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:.4rem"></i>${esc(it.label)}</span><b>${fmt(it.value)}</b> <span class="muted">${(it.value/total*100).toFixed(1)}%</span></div>`).join('');
+  return `<div style="display:flex;gap:1.5rem;align-items:center;flex-wrap:wrap">
+    <svg width="180" height="180" viewBox="0 0 180 180">${segs}</svg>
+    <div style="flex:1;min-width:200px">${legend}</div></div>`;
+}
+
+/* ============================== dashboard ============================== */
+function arrow(v){return v>=0?'↑':'↓';}
+function cls(v){return v>=0?'pos':'neg';}
+function renderDashboard(){
+  const val=portfolioValue(''),cost=portfolioCost('');
+  const day=dayChange(''),tot=val-cost;
+  $('#dTotal').textContent=fmt(val);
+  $('#dDay').innerHTML=`<span class="${cls(day)}">${arrow(day)} ${day>=0?'+':''}${fmt(day)} ${val?pct(day/(val-day||1)):'+0%'}</span>`;
+  $('#dAll').innerHTML=`<span class="${cls(tot)}">${arrow(tot)} ${tot>=0?'+':''}${fmt(tot)} ${cost?pct(tot/cost):'+0%'}</span>`;
+  const pas=passiveIncome();
+  $('#dPassive').textContent=fmt(pas);
+  $('#dPassiveM').textContent=fmt(pas/12);
+  $('#dYield').textContent=(val?(pas/val*100).toFixed(2):'0')+'%';
+  const cash=cashTotal();
+  $('#dCash').textContent=fmt(cash);
+  const cushion=avgMonthlyExpense()*S.settings.cushionMonths;
+  $('#dCushion').textContent=cushion?fmt(cushion):'–';
+  $('#dDelta').innerHTML=cushion?`<span class="${cls(cash-cushion)}">${fmt(cash-cushion)}</span>`:'–';
+  const m=monthSums(ym(today()));
+  $('#dInc').textContent=fmt(m.inc);$('#dInv').textContent=fmt(Math.max(m.inv,0));$('#dExp').textContent=fmt(m.exp);
+  const sum=m.inc+Math.max(m.inv,0)+m.exp;
+  $('#dBar').innerHTML=sum?`<i style="width:${m.inc/sum*100}%;background:var(--accent)"></i><i style="width:${Math.max(m.inv,0)/sum*100}%;background:var(--blue)"></i><i style="width:${m.exp/sum*100}%;background:var(--yellow)"></i>`:'';
+  // capital per month
+  const keys=Object.keys(S.snapshots).sort();
+  const pts=keys.map(k=>S.snapshots[k]);
+  const lbl=keys.map(k=>MONTHS_S[+k.slice(5,7)-1]);
+  $('#dCapitalChart').innerHTML=(keys.length>=2)?areaChart(pts,lbl):EMPTY;
+}
+
+/* ============================== portfolio page ============================== */
+let curPf='';
+function renderPortfolio(){
+  const sel=$('#pfSelect');
+  sel.innerHTML=`<option value="">Усі</option>`+S.portfolios.map(p=>`<option value="${p.id}" ${p.id===curPf?'selected':''}>${esc(p.name)}</option>`).join('');
+  sel.value=curPf;
+  const val=portfolioValue(curPf),cost=portfolioCost(curPf),ch=val-cost;
+  $('#pfValue').textContent=fmt(val);
+  $('#pfChange').innerHTML=`<span class="${cls(ch)}">${arrow(ch)} ${fmt(ch)}</span>`;
+  const keys=Object.keys(S.snapshots).sort();
+  $('#pfChart').innerHTML=(keys.length>=2&&!curPf)?areaChart(keys.map(k=>S.snapshots[k]),keys.map(k=>MONTHS_S[+k.slice(5,7)-1]),{height:200}):
+    (val?areaChart([cost,val],['Вкладено','Зараз'],{height:200}):EMPTY);
+  const hs=holdings(curPf);
+  if(!hs.length){$('#pfHoldings').innerHTML=EMPTY+`<div style="text-align:center;padding-bottom:1.5rem"><button class="btn primary" onclick="openAdd('buy')">⊕ Додати угоду</button></div>`;return;}
+  $('#pfHoldings').innerHTML=`<table>
+    <tr><th>Тикер</th><th>Кількість</th><th>Сер. ціна</th><th>Ціна</th><th>Вартість</th><th>P/L</th><th>Див./акц. на рік</th><th></th></tr>
+    ${hs.map(h=>{
+      const pr=priceOf(h.ticker),v=h.qty*pr,pl=v-h.cost,avg=h.cost/h.qty;
+      const div=(S.meta[h.ticker]&&S.meta[h.ticker].divPS)||0;
+      return`<tr>
+        <td><b>${esc(h.ticker)}</b></td>
+        <td>${h.qty.toLocaleString('en-US',{maximumFractionDigits:6})}</td>
+        <td>${fmt(avg,2)}</td>
+        <td><a href="#" onclick="editPrice('${esc(h.ticker)}');return false" title="Змінити ціну">${pr?fmt(pr,2):'задати'}</a></td>
+        <td>${fmt(v)}</td>
+        <td class="${cls(pl)}">${fmt(pl)} ${h.cost?pct(pl/h.cost):''}</td>
+        <td><a href="#" onclick="editDiv('${esc(h.ticker)}');return false">${div?fmt(div,2):'задати'}</a></td>
+        <td class="holding-actions"></td></tr>`;
+    }).join('')}
+  </table>`;
+}
+$('#pfSelect').onchange=e=>{curPf=e.target.value;renderPortfolio();};
+$('#btnNewPf').onclick=()=>{
+  openModal(`<h2>Новий портфель</h2>
+    <div class="form-row"><label>Назва</label><input id="mPfName" placeholder="Напр. IBKR / Дивідендний"></div>
+    <button class="btn primary" style="width:100%" id="mOk">Створити зараз</button>`);
+  $('#mOk').onclick=()=>{const n=$('#mPfName').value.trim();if(!n)return toast('Вкажіть назву');
+    const p={id:uid(),name:n};S.portfolios.push(p);curPf=p.id;save();closeModal();render();toast('Портфель створено');};
+};
+function editPrice(t){
+  openModal(`<h2>Ціна ${esc(t)}</h2>
+    <div class="form-row"><label>Поточна ціна, $</label><input id="mP" value="${priceOf(t)||''}" inputmode="decimal"></div>
+    <div class="form-row"><label>Закриття попереднього дня, $ (для «За день»)</label><input id="mPC" value="${(S.prices[t]&&S.prices[t].prevClose)||''}" inputmode="decimal"></div>
+    <button class="btn primary" style="width:100%" id="mOk">Зберегти</button>`);
+  $('#mOk').onclick=()=>{S.prices[t]={price:num($('#mP').value),prevClose:num($('#mPC').value)||num($('#mP').value),updatedAt:Date.now()};save();closeModal();render();};
+}
+function editDiv(t){
+  openModal(`<h2>Дивіденди ${esc(t)}</h2>
+    <div class="form-row"><label>Річний дивіденд на акцію, $</label><input id="mD" value="${(S.meta[t]&&S.meta[t].divPS)||''}" inputmode="decimal"></div>
+    <button class="btn primary" style="width:100%" id="mOk">Зберегти</button>`);
+  $('#mOk').onclick=()=>{S.meta[t]=Object.assign(S.meta[t]||{},{divPS:num($('#mD').value)});save();closeModal();render();};
+}
+$('#btnRefresh').onclick=async()=>{
+  const key=S.settings.apiKey;
+  const tickers=[...new Set(holdings('').map(h=>h.ticker))];
+  if(!tickers.length)return toast('Немає активів для оновлення');
+  if(!key){toast('Додайте API-ключ Finnhub у Налаштуваннях, або змінюйте ціни вручну (клік по ціні)');return;}
+  toast('Оновлюю ціни…');
+  let ok=0;
+  for(const t of tickers){
+    try{
+      const r=await fetch(`https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(t)}&token=${encodeURIComponent(key)}`);
+      const j=await r.json();
+      if(j&&j.c){S.prices[t]={price:j.c,prevClose:j.pc||j.c,updatedAt:Date.now()};ok++;}
+    }catch(e){}
+  }
+  save();render();
+  toast(ok?`Оновлено цін: ${ok} із ${tickers.length}`:'Не вдалося отримати ціни — перевірте ключ та інтернет');
+};
+
+/* ============================== deals page ============================== */
+let dealTab='trades',page=0;
+$('#dealTabs').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
+  dealTab=b.dataset.dt;page=0;$$('#dealTabs button').forEach(x=>x.classList.toggle('active',x===b));renderDeals();});
+['fPf','fTicker','fFrom','fTo','pageSize'].forEach(id=>$('#'+id).addEventListener('input',()=>{page=0;renderDeals();}));
+$('#pgPrev').onclick=()=>{if(page>0){page--;renderDeals();}};
+$('#pgNext').onclick=()=>{page++;renderDeals();};
+$('#denseSwitch').onclick=e=>{e.target.classList.toggle('on');renderDeals();};
+
+const TYPE_LBL={buy:'Купівля',sell:'Продаж',dividend:'Дивіденд',income:'Дохід',expense:'Витрата',transfer:'Переказ'};
+function dealRows(){
+  if(dealTab==='trades'){
+    return S.trades.map(t=>({...t,_kind:'trade'}));
+  }
+  return S.txs.filter(t=>t.type===dealTab).map(t=>({...t,_kind:'tx'}));
+}
+function renderDeals(){
+  const pf=$('#fPf');
+  pf.innerHTML=`<option value="">Всі</option>`+S.portfolios.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('');
+  let rows=dealRows();
+  const fpf=pf.value,ftk=$('#fTicker').value.trim().toUpperCase(),f1=$('#fFrom').value,f2=$('#fTo').value;
+  if(fpf)rows=rows.filter(r=>r.portfolioId===fpf);
+  if(ftk)rows=rows.filter(r=>(r.ticker||'').toUpperCase().includes(ftk));
+  if(f1)rows=rows.filter(r=>r.date>=f1);
+  if(f2)rows=rows.filter(r=>r.date<=f2);
+  rows.sort((a,b)=>b.date<a.date?-1:1);
+  const ps=+$('#pageSize').value,total=rows.length;
+  const maxPage=Math.max(0,Math.ceil(total/ps)-1);if(page>maxPage)page=maxPage;
+  const slice=rows.slice(page*ps,page*ps+ps);
+  $('#pageInfo').textContent=total?`${page*ps+1}–${Math.min((page+1)*ps,total)} з ${total}`:'0–0 з 0';
+  $('#pgPrev').disabled=page===0;$('#pgNext').disabled=page>=maxPage;
+  const dense=$('#denseSwitch').classList.contains('on');
+  if(!slice.length){$('#dealsTable').innerHTML=EMPTY;return;}
+  const isTrade=dealTab==='trades';
+  $('#dealsTable').innerHTML=`<table class="${dense?'dense':''}">
+    <tr><th>Тип</th><th>Дата ↓</th>${isTrade?'<th>Актив</th><th>Кількість</th><th>Ціна</th>':'<th>Категорія</th><th>Рахунок</th>'}<th>Сума</th><th></th></tr>
+    ${slice.map(r=>{
+      const amount=r._kind==='trade'?(r.type==='dividend'?r.amount:r.qty*r.price):r.amount;
+      const acc=r._kind==='tx'?(S.accounts.find(a=>a.id===r.accountId)||{}).name:'';
+      const acc2=r.type==='transfer'?' → '+((S.accounts.find(a=>a.id===r.toAccountId)||{}).name||''):'';
+      return`<tr>
+        <td><span class="pill ${r.type}">${TYPE_LBL[r.type]||r.type}</span></td>
+        <td>${r.date}</td>
+        ${r._kind==='trade'
+          ?`<td><b>${esc(r.ticker||'')}</b></td><td>${r.type==='dividend'?'—':r.qty}</td><td>${r.type==='dividend'?'—':fmt(r.price,2)}</td>`
+          :`<td>${esc(r.category||'—')}</td><td>${esc(acc||'—')}${esc(acc2)}</td>`}
+        <td><b>${fmt(amount)}</b></td>
+        <td><button class="btn small danger" onclick="delRow('${r._kind}','${r.id}')">✕</button></td></tr>`;
+    }).join('')}
+  </table>`;
+}
+function delRow(kind,id){
+  if(!confirm('Видалити запис?'))return;
+  if(kind==='trade')S.trades=S.trades.filter(t=>t.id!==id);else S.txs=S.txs.filter(t=>t.id!==id);
+  save();render();
+}
+
+/* ============================== budget page ============================== */
+function renderBudget(){
+  $('#bTotal').textContent=fmt(cashTotal(),2);
+  $('#bAccounts').innerHTML=S.accounts.map(a=>`
+    <div class="card" style="margin:0">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <h3>${esc(a.name)}</h3>
+        <button class="btn small danger" onclick="delAccount('${a.id}')">✕</button>
+      </div>
+      <div class="big" style="font-size:1.4rem">${fmt(accountBalance(a.id),2)}</div>
+    </div>`).join('')||'';
+  // stats: last 6 months
+  const now=new Date();const cats=[],inc=[],exp=[],inv=[];
+  for(let i=5;i>=0;i--){
+    const d=new Date(now.getFullYear(),now.getMonth()-i,1);
+    const key=d.toISOString().slice(0,7);const m=monthSums(key);
+    cats.push(MONTHS_S[d.getMonth()]);inc.push(m.inc);exp.push(m.exp);inv.push(Math.max(m.inv,0));
+  }
+  $('#bStatsChart').innerHTML=groupedBars(cats,[inc,exp,inv],['#5b5bd6','#f5a623','#38bdf8']);
+  // planning
+  const year=new Date().getFullYear();
+  $('#planYear').textContent=year+' ▾';
+  const plans=S.plans.filter(p=>p.year===year);
+  const sums={income:0,expense:0,invest:0};plans.forEach(p=>sums[p.kind]+=p.amount);
+  const PC=[{k:'income',ic:'↙',bg:'var(--accent)'},{k:'expense',ic:'↗',bg:'var(--yellow)'},{k:'invest',ic:'↗',bg:'var(--blue)'}];
+  $('#planCircles').innerHTML=PC.map(c=>`<div class="pc"><div class="icball" style="background:${c.bg}">${c.ic}</div><b>${fmt(sums[c.k])}</b></div>`).join('');
+  // actuals for plan progress
+  const yearTx={income:0,expense:0,invest:0};
+  S.txs.forEach(t=>{if(t.date.slice(0,4)==String(year)){if(t.type==='income')yearTx.income+=t.amount;if(t.type==='expense')yearTx.expense+=t.amount;}});
+  S.trades.forEach(t=>{if(t.date.slice(0,4)==String(year)&&t.type==='buy')yearTx.invest+=t.qty*t.price;});
+  const KIND_LBL={income:'Доходи',expense:'Витрати',invest:'Інвестиції'};
+  $('#planList').innerHTML=plans.length?plans.map(p=>{
+    const fact=p.category?S.txs.filter(t=>t.date.slice(0,4)==String(year)&&t.type===(p.kind==='invest'?'expense':p.kind)&&t.category===p.category).reduce((s,t)=>s+t.amount,0):yearTx[p.kind];
+    const prog=Math.min(fact/(p.amount||1)*100,100);
+    return`<div class="list-item"><div style="flex:1">
+      <div><b>${esc(p.category||KIND_LBL[p.kind])}</b> <span class="muted">· план ${fmt(p.amount)}</span></div>
+      <div class="bar-track" style="margin-top:.4rem"><i style="width:${prog}%;background:var(--accent)"></i></div>
+    </div><div style="text-align:right"><b>${fmt(fact)}</b><br><button class="btn small danger" onclick="delPlan('${p.id}')">✕</button></div></div>`;
+  }).join(''):`<div class="muted" style="text-align:center">Створити новий план витрат</div>`;
+  // pie current month
+  const mkey=ym(today());
+  $('#bMonthLbl').textContent=MONTHS[+mkey.slice(5,7)-1]+' '+mkey.slice(0,4);
+  const byCat={};
+  S.txs.filter(t=>t.type==='expense'&&ym(t.date)===mkey).forEach(t=>{byCat[t.category||'Інше']=(byCat[t.category||'Інше']||0)+t.amount;});
+  const palette=['#5b5bd6','#f5a623','#38bdf8','#4ade80','#f87171','#a78bfa','#fb923c','#2dd4bf'];
+  $('#bPie').innerHTML=donut(Object.entries(byCat).map(([label,value],i)=>({label,value,color:palette[i%palette.length]})));
+}
+function delAccount(id){
+  if(!confirm('Видалити рахунок разом з його транзакціями?'))return;
+  S.accounts=S.accounts.filter(a=>a.id!==id);
+  S.txs=S.txs.filter(t=>t.accountId!==id&&t.toAccountId!==id);
+  save();render();
+}
+function delPlan(id){S.plans=S.plans.filter(p=>p.id!==id);save();render();}
+$('#btnNewAcc').onclick=()=>{
+  openModal(`<h2>Новий рахунок</h2>
+    <div class="form-row"><label>Назва</label><input id="mAName" placeholder="Напр. Готівка / Mono / Privat"></div>
+    <div class="form-row"><label>Стартовий баланс, $</label><input id="mABal" value="0" inputmode="decimal"></div>
+    <button class="btn primary" style="width:100%" id="mOk">Створити</button>`);
+  $('#mOk').onclick=()=>{const n=$('#mAName').value.trim();if(!n)return toast('Вкажіть назву');
+    S.accounts.push({id:uid(),name:n,balance:num($('#mABal').value)});save();closeModal();render();};
+};
+$('#btnNewPlan').onclick=()=>{
+  openModal(`<h2>Новий план на ${new Date().getFullYear()}</h2>
+    <div class="form-row"><label>Тип</label><select id="mPKind"><option value="expense">Витрати</option><option value="income">Доходи</option><option value="invest">Інвестиції</option></select></div>
+    <div class="form-row"><label>Категорія (необов'язково)</label><input id="mPCat" placeholder="Напр. Їжа, Оренда…"></div>
+    <div class="form-row"><label>Сума на рік, $</label><input id="mPAmt" inputmode="decimal"></div>
+    <button class="btn primary" style="width:100%" id="mOk">Створити план</button>`);
+  $('#mOk').onclick=()=>{const amt=num($('#mPAmt').value);if(!amt)return toast('Вкажіть суму');
+    S.plans.push({id:uid(),year:new Date().getFullYear(),kind:$('#mPKind').value,category:$('#mPCat').value.trim(),amount:amt});
+    save();closeModal();render();};
+};
+
+/* ============================== add modal ============================== */
+$('#btnAdd').onclick=()=>{
+  openModal(`<h2>Що додати?</h2><div class="typegrid">
+    <button onclick="openAdd('buy')"><span class="ic">🟢</span>Купівля</button>
+    <button onclick="openAdd('sell')"><span class="ic">🔴</span>Продаж</button>
+    <button onclick="openAdd('dividend')"><span class="ic">💵</span>Дивіденд</button>
+    <button onclick="openAdd('income')"><span class="ic">↙️</span>Дохід</button>
+    <button onclick="openAdd('expense')"><span class="ic">↗️</span>Витрата</button>
+    <button onclick="openAdd('transfer')"><span class="ic">🔁</span>Переказ</button>
+  </div>`);
+};
+function openAdd(type){
+  const isTrade=['buy','sell','dividend'].includes(type);
+  if(isTrade&&!S.portfolios.length){closeModal();toast('Спочатку створіть портфель');go('portfolio');return;}
+  if(!isTrade&&!S.accounts.length){closeModal();toast('Спочатку створіть рахунок');go('budget');return;}
+  const pfOpts=S.portfolios.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('');
+  const accOpts=S.accounts.map(a=>`<option value="${a.id}">${esc(a.name)}</option>`).join('');
+  let body='';
+  if(isTrade){
+    body=`<div class="form-row"><label>Портфель</label><select id="mPf">${pfOpts}</select></div>
+      <div class="form-row"><label>Тикер</label><input id="mTicker" placeholder="AAPL" style="text-transform:uppercase"></div>
+      ${type==='dividend'
+        ?`<div class="form-row"><label>Сума дивіденду, $</label><input id="mAmount" inputmode="decimal"></div>`
+        :`<div class="form-row"><label>Кількість</label><input id="mQty" inputmode="decimal"></div>
+          <div class="form-row"><label>Ціна за одиницю, $</label><input id="mPrice" inputmode="decimal"></div>
+          <div class="form-row"><label>Комісія, $</label><input id="mFee" value="0" inputmode="decimal"></div>`}
+      <div class="form-row"><label>Дата</label><input type="date" id="mDate" value="${today()}"></div>`;
+  }else{
+    body=`<div class="form-row"><label>${type==='transfer'?'З рахунку':'Рахунок'}</label><select id="mAcc">${accOpts}</select></div>
+      ${type==='transfer'?`<div class="form-row"><label>На рахунок</label><select id="mAcc2">${accOpts}</select></div>`:
+        `<div class="form-row"><label>Категорія</label><input id="mCat" placeholder="${type==='income'?'Зарплата, фриланс…':'Їжа, оренда, транспорт…'}"></div>`}
+      <div class="form-row"><label>Сума, $</label><input id="mAmount" inputmode="decimal"></div>
+      <div class="form-row"><label>Дата</label><input type="date" id="mDate" value="${today()}"></div>
+      <div class="form-row"><label>Нотатка</label><input id="mNote"></div>`;
+  }
+  openModal(`<h2>${TYPE_LBL[type]}</h2>${body}<button class="btn primary" style="width:100%" id="mOk">Зберегти</button>`);
+  $('#mOk').onclick=()=>{
+    if(isTrade){
+      const ticker=$('#mTicker').value.trim().toUpperCase();
+      if(!ticker)return toast('Вкажіть тикер');
+      const t={id:uid(),portfolioId:$('#mPf').value,type,ticker,date:$('#mDate').value||today()};
+      if(type==='dividend'){t.amount=num($('#mAmount').value);if(!t.amount)return toast('Вкажіть суму');}
+      else{
+        t.qty=num($('#mQty').value);t.price=num($('#mPrice').value);t.fee=num($('#mFee').value);
+        if(!t.qty||!t.price)return toast('Вкажіть кількість і ціну');
+        if(!S.prices[ticker])S.prices[ticker]={price:t.price,prevClose:t.price,updatedAt:Date.now()};
+      }
+      S.trades.push(t);
+    }else{
+      const amount=num($('#mAmount').value);if(!amount)return toast('Вкажіть суму');
+      const t={id:uid(),type,accountId:$('#mAcc').value,amount,date:$('#mDate').value||today(),note:($('#mNote')||{}).value||''};
+      if(type==='transfer'){t.toAccountId=$('#mAcc2').value;if(t.toAccountId===t.accountId)return toast('Оберіть різні рахунки');}
+      else t.category=$('#mCat').value.trim()||'Інше';
+      S.txs.push(t);
+    }
+    save();closeModal();render();toast('Збережено');
+  };
+}
+function openModal(html){$('#modal').innerHTML=html+`<button class="btn" style="width:100%;margin-top:.6rem" onclick="closeModal()">Скасувати</button>`;$('#overlay').classList.add('open');}
+function closeModal(){$('#overlay').classList.remove('open');}
+$('#overlay').addEventListener('click',e=>{if(e.target.id==='overlay')closeModal();});
+
+/* ============================== planner ============================== */
+let plMode='nominal',plType='area',plSeries=null,plTemplate=false,plBase='$';
+const CURRENCIES=['$','€','₴'];
+function profileName(r){return r<6?'Консервативний':r<8.5?'Помірний':'Агресивний';}
+// FX: rate(sym) = units of that currency per 1 USD. Convert via USD pivot.
+function fxRate(sym){return sym==='€'?(S.settings.fx.EUR||1):sym==='₴'?(S.settings.fx.UAH||1):1;}
+function toUSD(amount,sym){return amount/fxRate(sym);}
+function D(usd){return usd*fxRate(plBase);}            // USD -> display (base) currency
+function fmtCur(n,dec){return fmt(n,dec).replace(/^(-?)\$/,'$1'+plBase);}
+function kfmtCur(v){const a=Math.abs(v);const s=a>=1000?Math.round(v/1000)+'K':Math.round(v).toString();return(v<0?'-':'')+plBase+s.replace('-','');}
+function plural(n,one,few,many){const m10=n%10,m100=n%100;return m10===1&&m100!==11?one:m10>=2&&m10<=4&&(m100<10||m100>=20)?few:many;}
+function fieldCur(inputId){const p=$('#'+inputId).parentElement;const s=p&&p.querySelector('.curSel');return s?s.value:plBase;}
+function recalcPlanner(){if(plSeries)calcPlanner(true);}
+
+// base currency, per-field currency selectors, and exchange-rate inputs
+function initCur(){
+  plBase=S.settings.planBase||'$';
+  const bsel=$('#plBaseCur');
+  bsel.innerHTML=CURRENCIES.map(c=>`<option ${c===plBase?'selected':''}>${c}</option>`).join('');
+  bsel.onchange=()=>{plBase=bsel.value;S.settings.planBase=plBase;save();recalcPlanner();};
+  $$('.curSel').forEach(sel=>{
+    sel.innerHTML=CURRENCIES.map(c=>`<option ${c===plBase?'selected':''}>${c}</option>`).join('');
+    sel.onchange=recalcPlanner;
+  });
+  $('#fxEUR').value=S.settings.fx.EUR;
+  $('#fxUAH').value=S.settings.fx.UAH;
+  $('#fxEUR').onchange=()=>{S.settings.fx.EUR=num($('#fxEUR').value)||1;save();recalcPlanner();};
+  $('#fxUAH').onchange=()=>{S.settings.fx.UAH=num($('#fxUAH').value)||1;save();recalcPlanner();};
+}
+// mode toggle: template vs manual
+$$('#plModeSeg button').forEach(b=>b.onclick=()=>{
+  plTemplate=b.dataset.pm==='template';
+  $$('#plModeSeg button').forEach(x=>x.classList.toggle('active',x===b));
+  $('#plTemplateBlock').style.display=plTemplate?'block':'none';
+  $('#plManualBlock').style.display=plTemplate?'none':'block';
+});
+$('#plPension').onclick=e=>{
+  e.target.classList.toggle('on');
+  $('#plPensionBlock').style.display=e.target.classList.contains('on')?'block':'none';
+};
+$('#plReturn').addEventListener('input',()=>{
+  $('#plProfile').textContent='Припущений ризик-профіль: '+profileName(num($('#plReturn').value));
+});
+$('#plRiskProfile').addEventListener('change',()=>{}); // value read at calc time
+$('#btnCalc').onclick=calcPlanner;
+$$('#plResults .seg button').forEach(b=>b.onclick=()=>{
+  plMode=b.dataset.mode;
+  $$('#plResults .seg button').forEach(x=>x.classList.toggle('active',x===b));
+  updateSummary();drawPlanner();
+});
+
+function getReturn(){return plTemplate?(+$('#plRiskProfile').value)/100:num($('#plReturn').value)/100;}
+function sample(arr,maxPts){const step=Math.max(1,Math.floor((arr.length-1)/maxPts));const out=[];for(let i=0;i<arr.length;i+=step)out.push(arr[i]);if(out[out.length-1]!==arr[arr.length-1])out.push(arr[arr.length-1]);return out;}
+
+// build accumulation series for a given return
+function accumulate(r,years,start,contrib,perYear,growth,infl){
+  const months=years*12,rm=r/12,gm=Math.pow(1+growth,1/12);
+  let bal=start,invested=start,c=contrib;
+  const nom=[bal],real=[bal];
+  for(let m=1;m<=months;m++){
+    c*=gm;bal*=1+rm;
+    if(perYear===12||(perYear===4&&m%3===0)||(perYear===1&&m%12===0)){bal+=c;invested+=c;}
+    nom.push(bal);real.push(bal/Math.pow(1+infl,m/12));
+  }
+  return{nom,real,invested,final:bal};
+}
+
+function calcPlanner(skipScroll){
+  const years=Math.max(1,Math.round(num($('#plYears').value)));
+  const start=toUSD(num($('#plStart').value),fieldCur('plStart'));
+  const contrib=toUSD(num($('#plContrib').value),fieldCur('plContrib'));
+  const perYear=+$('#plFreq').value;
+  const ret=getReturn();
+  const infl=num($('#plInfl').value)/100;
+  const growth=num($('#plGrowth').value)/100;
+  const tax=num($('#plTax').value)/100;
+
+  const real=accumulate(ret,years,start,contrib,perYear,growth,infl);
+  const opt=accumulate(ret+0.04,years,start,contrib,perYear,growth,infl);
+  const pes=accumulate(Math.max(0,ret-0.04),years,start,contrib,perYear,growth,infl);
+
+  // pension decumulation
+  const pensionOn=$('#plPension').classList.contains('on');
+  const retYears=Math.max(1,Math.round(num($('#plRetYears').value)));
+  const retRet=num($('#plRetReturn').value)/100;
+  const monthlySpend=toUSD(num($('#plRetSpend').value),fieldCur('plRetSpend'));
+  let penNom=null,penReal=null,depletedAt=null;
+  if(pensionOn){
+    penNom=real.nom.slice();penReal=real.real.slice();
+    let bal=real.final,w=monthlySpend*Math.pow(1+infl,years); // nominal withdrawal at retirement
+    const rr=retRet/12;
+    for(let m=1;m<=retYears*12;m++){
+      bal=bal*(1+rr)-w;w*=Math.pow(1+infl,1/12);
+      if(bal<0&&depletedAt===null)depletedAt=years+m/12;
+      penNom.push(Math.max(bal,0));
+      penReal.push(Math.max(bal,0)/Math.pow(1+infl,years+m/12));
+    }
+  }
+
+  const gains=real.final-real.invested,afterTaxGain=gains*(1-tax);
+  const vol=ret*1.585,dd=vol*1.9467;
+  plSeries={ret,years,infl,retYears,monthlySpend,pensionOn,depletedAt,vol,dd,
+    invested:real.invested,gains,afterTaxGain,
+    acc:{realistic:real,optimistic:opt,pessimistic:pes},
+    pen:{nom:penNom,real:penReal}};
+
+  // results
+  $('#plRisk').textContent=(vol*100).toFixed(2)+'%';
+  $('#plDD').textContent='-'+(dd*100).toFixed(2)+'%';
+  $('#plRetOut').textContent=(ret*100).toFixed(0)+'%';
+
+  plType=pensionOn?'pension':'area';
+  renderChartIcons(pensionOn);
+  $('#plResults').style.display='block';
+  updateSummary();drawPlanner();
+  if(!skipScroll&&$('#plResults').scrollIntoView)$('#plResults').scrollIntoView({behavior:'smooth'});
+}
+
+function updateSummary(){
+  if(!plSeries)return;
+  const {years,acc,invested,afterTaxGain,pensionOn,monthlySpend,depletedAt,retYears}=plSeries;
+  const finalVal=plMode==='real'?acc.realistic.real[acc.realistic.real.length-1]:acc.realistic.final;
+  $('#plFinal').textContent=fmtCur(D(finalVal),2);
+  $('#plFinalLbl').textContent=`${plMode==='real'?'Реальна':'Номінальна'} вартість портфеля через ${years} ${plural(years,'рік','роки','років')}`;
+  $('#plInvested').textContent=fmtCur(D(invested));
+  $('#plAfterTax').textContent='+'+fmtCur(D(afterTaxGain));
+  $('#plPensionRow').style.display=pensionOn?'flex':'none';
+  if(pensionOn){
+    $('#plPensionLbl').textContent='Щомісячна виплата на пенсії';
+    const note=depletedAt?` · вистачить на ${(depletedAt-years).toFixed(1)} р`:` · вистачає на всі ${retYears} ${plural(retYears,'рік','роки','років')}`;
+    $('#plPensionOut').innerHTML=fmtCur(D(monthlySpend))+`<span class="muted" style="font-weight:400">${note}</span>`;
+    $('#plPensionOut').className=depletedAt?'neg':'pos';
+  }
+}
+
+function renderChartIcons(pensionOn){
+  const icons=[['area','〽'],['line','📈'],['bars','📊']];
+  if(pensionOn)icons.unshift(['pension','💰']);
+  $('#plChartIcons').innerHTML=icons.map(([t,ic])=>`<button data-type="${t}" class="${t===plType?'active':''}">${ic}</button>`).join('');
+  $$('#plChartIcons button').forEach(b=>b.onclick=()=>{
+    plType=b.dataset.type;
+    $$('#plChartIcons button').forEach(x=>x.classList.toggle('active',x===b));
+    drawPlanner();
+  });
+}
+
+function drawPlanner(){
+  if(!plSeries)return;
+  const {acc,pen,years,retYears,pensionOn}=plSeries;
+  const title=$('#plChartTitle');
+  if(plType==='pension'&&pensionOn){
+    title.textContent='Планування пенсії';
+    const arr=(plMode==='real'?pen.real:pen.nom).map(D);
+    const pts=sample(arr,160);
+    const totalYears=years+retYears;
+    const markerIdx=Math.round(years/totalYears*(pts.length-1));
+    renderBigChart($('#plChart'),{
+      series:[{name:'Капітал',color:'#4f7bff',pts}],
+      totalYears,mode:'area',legend:false,
+      marker:{index:markerIdx,emoji:'💰'},pension:true});
+  }else{
+    title.textContent='Прогнозоване зростання капіталу';
+    const pick=s=>sample((plMode==='real'?s.real:s.nom).map(D),160);
+    renderBigChart($('#plChart'),{
+      series:[
+        {name:'Оптимістичний сценарій',color:'#7a6cf0',pts:pick(acc.optimistic)},
+        {name:'Реалістичний сценарій',color:'#f5a623',pts:pick(acc.realistic)},
+        {name:'Песимістичний сценарій',color:'#38bdf8',pts:pick(acc.pessimistic)},
+      ],
+      totalYears:years,mode:plType,legend:true});
+  }
+}
+
+function renderBigChart(el,cfg){
+  const {series,totalYears,height=300,mode='area',legend=false,marker=null,pension=false}=cfg;
+  const n=series[0].pts.length;
+  if(!n){el.innerHTML=EMPTY;return;}
+  const W=900,H=height,padL=54,padR=16,padT=16,padB=30;
+  const all=series.flatMap(s=>s.pts);
+  const max=Math.max(...all,1)*1.08,min=Math.min(0,...all);
+  const X=i=>padL+i*(W-padL-padR)/Math.max(n-1,1);
+  const Y=v=>padT+(H-padT-padB)*(1-(v-min)/(max-min||1));
+  let grid='',ylab='';
+  for(let g=0;g<=4;g++){const v=min+(max-min)*g/4,yy=Y(v);
+    grid+=`<line x1="${padL}" x2="${W-padR}" y1="${yy}" y2="${yy}" stroke="#222831"/>`;
+    ylab+=`<text x="${padL-8}" y="${yy+4}" fill="#8b93a1" font-size="13" text-anchor="end">${kfmtCur(v)}</text>`;}
+  let xlab='';const ticks=Math.min(6,n-1);
+  for(let t=0;t<=ticks;t++){const i=Math.round(t*(n-1)/ticks),yr=Math.round(i/(n-1)*totalYears);
+    xlab+=`<text x="${X(i)}" y="${H-9}" fill="#8b93a1" font-size="12" text-anchor="middle">${yr}р</text>`;}
+  let defs='',paths='';
+  if(mode==='bars'){
+    const s=series[1]||series[0];const bw=Math.max(2,(W-padL-padR)/n*0.55);
+    s.pts.forEach((p,i)=>{paths+=`<rect x="${X(i)-bw/2}" y="${Y(p)}" width="${bw}" height="${Y(min)-Y(p)}" rx="2" fill="${s.color}"/>`;});
+  }else{
+    series.forEach((s,si)=>{
+      let d='M'+X(0)+','+Y(s.pts[0]);s.pts.forEach((p,i)=>{if(i)d+=' L'+X(i)+','+Y(p);});
+      if(mode==='area'){const gid='grd'+si+Math.random().toString(36).slice(2,6);
+        defs+=`<linearGradient id="${gid}" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="${s.color}" stop-opacity="0.4"/><stop offset="1" stop-color="${s.color}" stop-opacity="0.02"/></linearGradient>`;
+        paths+=`<path d="${d} L${X(n-1)},${Y(min)} L${X(0)},${Y(min)} Z" fill="url(#${gid})"/>`;}
+      paths+=`<path d="${d}" fill="none" stroke="${s.color}" stroke-width="2.5"/>`;
+    });
+  }
+  let mk='';
+  if(marker){const i=marker.index;mk=`<line x1="${X(i)}" x2="${X(i)}" y1="${padT}" y2="${Y(min)}" stroke="#8b93a1" stroke-dasharray="4 4"/><text x="${X(i)}" y="${Y(series[0].pts[i])-14}" font-size="20" text-anchor="middle">${marker.emoji}</text>`;}
+  const leg=legend?`<div class="chart-legend">${series.map(s=>`<span><i class="dot" style="background:${s.color}"></i>${esc(s.name)}</span>`).join('')}</div>`:'';
+  el.innerHTML=`<div class="chart-wrap"><svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="width:100%;height:${H}px;display:block"><defs>${defs}</defs>${grid}${ylab}${xlab}${paths}${mk}<g class="hg" style="opacity:0"><line stroke="#fff" stroke-opacity=".35" y1="${padT}" y2="${Y(min)}"></line>${series.map(s=>`<circle r="5" fill="${s.color}" stroke="#0c0e11" stroke-width="2"></circle>`).join('')}</g></svg><div class="chart-tip"></div></div>${leg}`;
+  // hover
+  const wrap=el.querySelector('.chart-wrap'),svg=wrap.querySelector('svg'),tip=wrap.querySelector('.chart-tip'),hg=wrap.querySelector('.hg'),circs=[...hg.querySelectorAll('circle')];
+  function move(ev){
+    const r=svg.getBoundingClientRect();const cx=(ev.touches?ev.touches[0].clientX:ev.clientX)-r.left;
+    const frac=(cx/r.width*W-padL)/(W-padL-padR);
+    const i=Math.max(0,Math.min(n-1,Math.round(frac*(n-1))));
+    const px=X(i)/W*r.width;
+    hg.style.opacity=1;hg.querySelector('line').setAttribute('x1',X(i));hg.querySelector('line').setAttribute('x2',X(i));
+    circs.forEach((c,si)=>{c.setAttribute('cx',X(i));c.setAttribute('cy',Y(series[si].pts[i]));});
+    const months=Math.round(i/(n-1)*totalYears*12),yr=(new Date().getFullYear())+Math.floor(months/12);
+    const ny=Math.floor(months/12),nm=months%12;
+    const head=pension?`${yr} (за ${ny} ${plural(ny,'рік','роки','років')} ${nm} міс)`:`Рік ${Math.round(i/(n-1)*totalYears)}`;
+    tip.innerHTML=`<div><b>${head}</b></div>`+series.map(s=>`<div class="tt-row"><i class="dot" style="background:${s.color}"></i>${fmtCur(s.pts[i],2)}</div>`).join('');
+    tip.style.opacity=1;tip.style.left=Math.max(60,Math.min(r.width-60,px))+'px';
+    tip.style.top=(Y(Math.max(...series.map(s=>s.pts[i])))/H*r.height)+'px';
+  }
+  wrap.addEventListener('mousemove',move);
+  wrap.addEventListener('touchmove',move);
+  wrap.addEventListener('mouseleave',()=>{tip.style.opacity=0;hg.style.opacity=0;});
+}
+
+/* ============================== settings ============================== */
+function renderSettings(){
+  $('#setApiKey').value=S.settings.apiKey||'';
+  $('#setCushion').value=S.settings.cushionMonths;
+}
+$('#btnSaveKey').onclick=()=>{S.settings.apiKey=$('#setApiKey').value.trim();save();toast(S.settings.apiKey?'Ключ збережено':'Ключ очищено');};
+$('#setCushion').addEventListener('change',e=>{S.settings.cushionMonths=Math.max(1,+e.target.value||6);save();render();});
+$('#btnExport').onclick=()=>{
+  const a=document.createElement('a');
+  a.href='data:application/json;charset=utf-8,'+encodeURIComponent(JSON.stringify(S,null,2));
+  a.download='fintracker-backup-'+today()+'.json';a.click();
+};
+$('#btnImport').onclick=()=>$('#importFile').click();
+$('#importFile').addEventListener('change',e=>{
+  const f=e.target.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=()=>{try{S=Object.assign(defaults(),JSON.parse(r.result));save();render();toast('Дані імпортовано');}catch(err){toast('Невірний файл');}};
+  r.readAsText(f);e.target.value='';
+});
+$('#btnWipe').onclick=()=>{
+  if(!confirm('Видалити ВСІ дані безповоротно?'))return;
+  localStorage.removeItem(LS_KEY);S=defaults();render();toast('Дані видалено');
+};
+
+/* ============================== render all ============================== */
+function render(){renderDashboard();renderPortfolio();renderDeals();renderBudget();renderSettings();}
+initCur();
+snapshot();
+render();
+</script>
+</body>
+</html>
